@@ -27,7 +27,7 @@ local theme_path = string.format("%s/.config/awesome/themes/%s/theme.lua", os.ge
 beautiful.init(theme_path)
 
 -- This is used later as the default terminal and editor to run.
-terminal = "alacritty"
+terminal = "xfce4-terminal"
 editor = os.getenv("EDITOR") or "xed"
 editor_cmd = terminal .. " -e " .. editor
 
@@ -315,7 +315,7 @@ globalkeys = gears.table.join(
     {description = "take a screenshot of an area of the screen", group = "launcher"}),
   awful.key({ modkey, "Mod1" }, "Delete", function () awful.spawn.easy_async_with_shell("xkill") end,
     {description = "kill a window by brute force", group = "launcher"}),
-  awful.key({ "Control", "Mod1" }, "Delete", function () awful.spawn("alacritty -t 'Task Manager' -e 'htop'") end,
+  awful.key({ "Control", "Mod1" }, "Delete", function () awful.spawn("xfce4-terminal --title 'Task Manager' -e 'htop'") end,
     {description = "Launch HTOP", group = "launcher"}),
 
   -- Brightness Hotkeys
@@ -656,7 +656,7 @@ beautiful.useless_gap = 5
 
 -- Run garbage collector regularly to prevent memory leaks
 gears.timer {
-  timeout = 30,
+  timeout = 60,
   autostart = true,
   callback = function() collectgarbage() end
 }
@@ -667,99 +667,3 @@ gears.timer {
 -- awful.spawn.with_shell("")
 -- awful.spawn.easy_async_with_shell("")
 awful.spawn.easy_async_with_shell("/home/kylert/.config/awesome/autorun.sh")
-
--- Client Swallowing Function
-
-table_is_swallowed = { 
-    "Alacritty" }
-table_minimize_parent = { 
-    "mpv",
-    "vlc",
-    "MPlayer",
-    "URxvt",
-    "XTerm" }
-table_cannot_swallow = { 
-    "xev" }
-
-function is_in_Table(table, element)
-    for _, value in pairs(table) do
-        if element:match(value) then
-            return true
-        end
-    end
-    return false
-end
-
-function is_to_be_swallowed(c)
-    return (c.class and is_in_Table(table_is_swallowed, c.class)) and true or false
-end
-
-function can_swallow(class)
-    return not is_in_Table(table_cannot_swallow, class)
-end
-
-function is_parent_minimized(class)
-    return is_in_Table(table_minimize_parent, class)
-end
-
-function copy_size(c, parent_client)
-    if (not c or not parent_client) then
-        return
-    end
-    if (not c.valid or not parent_client.valid) then
-        return
-    end
-    c.x=parent_client.x;
-    c.y=parent_client.y;
-    c.width=parent_client.width;
-    c.height=parent_client.height;
-end
-function check_resize_client(c)
-    if(c.child_resize) then
-        copy_size(c.child_resize, c)
-    end
-end
-
-function get_parent_pid(child_ppid, callback)
-    local ppid_cmd = string.format("pstree -ps %s", child_ppid)
-    awful.spawn.easy_async(ppid_cmd, function(stdout, stderr, reason, exit_code)
-        -- primitive error checking
-        if stderr and stderr ~= "" then
-            callback(stderr)
-            return
-        end
-        local ppid = stdout
-        callback(nil, ppid)
-    end)
-end
-
-client.connect_signal("property::size", check_resize_client)
-client.connect_signal("property::position", check_resize_client)
-client.connect_signal("manage", function(c)
-    if is_to_be_swallowed(c) then
-        return
-    end
-    local parent_client=awful.client.focus.history.get(c.screen, 1)
-    get_parent_pid(c.pid, function(err, ppid)
-        if err then
-            error(err)
-            return
-        end
-        parent_pid = ppid
-        if parent_client and (parent_pid:find("("..parent_client.pid..")")) and is_to_be_swallowed(parent_client) and can_swallow(c.class) then
-            if is_parent_minimized(c.class) then
-                parent_client.child_resize=c
-                parent_client.minimized = true
-                c:connect_signal("unmanage", function() parent_client.minimized = false end)
-                copy_size(c, parent_client)
-            else
-                parent_client.child_resize=c
-                c.floating=true
-                copy_size(c, parent_client)
-            end
-        end
-    end)
-end)
-
--- End Client Swallowing Function
-
