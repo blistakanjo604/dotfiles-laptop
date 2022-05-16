@@ -346,7 +346,16 @@ awful.key({ modkey,"Shift" }, "o", function () awful.spawn.easy_async_with_shell
   awful.key({ modkey }, "grave", function () awful.spawn.easy_async_with_shell("xfce4-clipman-history") end,
                 {description = "open clipboard history", group = "launcher"}),
 
+  -- On-the-fly Window Gaps configuration
 
+  awful.key({modkey}, "'", function () awful.tag.incgap(2)   end,
+                {description = "increase window gaps", group = "window gaps"}),
+
+  awful.key({modkey}, ";", function () awful.tag.incgap(-2)   end,
+                {description = "decrease window gaps", group = "window gaps"}),
+
+  awful.key({modkey}, "backslash", function () awful.tag.setgap(5)   end,
+                {description = "reset window gaps", group = "window gaps"}),    -- Warning: awful.tag.setgap() is deprecated
 
   -- Tiled Window Sizing and Client count/columns
 
